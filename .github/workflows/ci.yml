@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Parser tests
+        working-directory: Packages/LabParser
+        run: swift test
+
+      - name: Generate Xcode project
+        run: |
+          brew install xcodegen
+          xcodegen generate
+
+      - name: Build app for the simulator
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project HealthLab.xcodeproj \
+            -scheme HealthLab \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO | tee build.log | grep -E "error|warning: |BUILD" || true
+          grep -q "BUILD SUCCEEDED" build.log
